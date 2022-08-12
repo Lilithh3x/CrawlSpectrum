@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -12,110 +13,41 @@ import (
 )
 
 func main() {
-	breadthFirst(crawl, os.Args[1:]) // chama a função crawl e executa junto com um argumento de linha de comando
-
+	u := flag.String("u", "", "URL de entrada")           //cria uma variavel do tipo string, que define a url de input do programa, e inclue uma descriçao ao comando "u"
+	d := flag.Int("d", 1, "Nível de profundidade BFS")    //cria uma variavel do tipo inteiro, que define o nivel de profundidade do BFS, e inclue uma descrição ao comando "d"
+	o := flag.String("o", "", "Cria um arquivo de saída") //cria uma variavel do tipo string que armazena o nome de um arquivo que vai salvar todos os resultados finais que irão ser gerados no fim da execucao do programa
+	flag.Parse()                                          //processa o input do usuario
+	var urlsLidas, urlsParaLer []string                   //cria uma variavel do tipo string para armazenar e separar as urls que ja foram lidas e as que faltam ainda ler
+	urlsParaLer = append(urlsParaLer, *u)                 //le a url de input armazenada no valor u
+	for i := 0; i < *d; i++ {                             //cria um loop de repetiçao que procura e armazena as urls encontradas na pagina
+		urlsLidas = append(urlsLidas, urlsParaLer...)  //subistitui as urls que ja foram lidas para as novas que ainda faltam ler
+		urlsParaLer = breadthFirst(crawl, urlsParaLer) //armazena as urls que ja foram lidas das novas que tem para ler
+	}
+	urlsLidas = append(urlsLidas, urlsParaLer...)
+	for _, url := range urlsLidas { //cria um loop que salva todas as urls encontradas
+		fmt.Println(url) //printa as urls encontradas
+	}
+	writeOutput(urlsLidas, *o) //chama a funcao writeOutput para criar um arquivo de saida
 }
 
-type UsageSection struct {
-	Nome          string
-	Descrição     string
-	Flags         []UsageFlag
-	Hidden        bool
-	ExpectedFlags []string
+//funçao que cria o arquivo de saida com o resultado da variavel urlsLidas
+func writeOutput(urlsLidas []string, o string) {
+	f, err := os.Create(o)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	write := bufio.NewWriter(f)
+	for _, url := range urlsLidas {
+		write.WriteString(url + "\n")
+	}
+	write.Flush()
 }
 
-func (u *UsageSection) PrintSection(max_length int, extended bool) {
-	if !extended && u.Hidden {
-		return
-	}
-	fmt.Printf("%s:\n", u.Nome)
-	for _, f := range u.Flags {
-		f.PrintFlag(max_length)
-	}
-	fmt.Printf("\n")
-}
-
-type UsageFlag struct {
-	Name      string
-	Descrição string
-	Default   string
-}
-
-func (f *UsageFlag) PrintFlag(max_length int) {
-	format := fmt.Sprintf("  -%%-%ds", max_length)
-	if f.Default != "" {
-		format = format + "(default: %s)\n"
-		fmt.Printf(format, f.Name, f.Descrição, f.Default)
-	} else {
-		format = format + "\n"
-		fmt.Printf(format, f.Name, f.Descrição)
-	}
-}
-
-func Usage() {
-	u_http := UsageSection{
-		Nome:          "HTTP OPTIONS",
-		Descrição:     "Options contolling the HTTP request and its parts.",
-		Flags:         make([]UsageFlag, 0),
-		Hidden:        false,
-		ExpectedFlags: []string{"u", "X", "timeout"},
-	}
-	u_general := UsageSection{
-		Nome:          "GENERAL OPTIONS",
-		Descrição:     "",
-		Flags:         make([]UsageFlag, 0),
-		Hidden:        false,
-		ExpectedFlags: []string{"t", "v"},
-	}
-	u_output := UsageSection{
-		Nome:          "OUTPUT OPTIONS",
-		Descrição:     "Options for output. Output file formats and file names .",
-		Flags:         make([]UsageFlag, 0),
-		Hidden:        false,
-		ExpectedFlags: []string{"o", "of"},
-	}
-	sections := []UsageSection{u_http, u_general, u_output}
-
-	max_length := 0
-	flag.VisitAll(func(f *flag.Flag) {
-		found := false
-		for i, section := range sections {
-			if strInSlince(f.Name, section.ExpectedFlags) {
-				sections[i].Flags = append(sections[i].Flags, UsageFlag{
-					Name:      f.Name,
-					Descrição: f.Usage,
-					Default:   f.DefValue,
-				})
-				found = true
-			}
-		}
-		if !found {
-			fmt.Printf("DEBUG: Flag %s was found but not defined in craw.go.\n", f.Name)
-			os.Exit(1)
-		}
-		if len(f.Name) > max_length {
-			max_length = len(f.Name)
-		}
-	})
-
-	for _, section := range sections {
-		section.PrintSection(max_length, false)
-	}
-}
-
-func strInSlince(val string, slice []string) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-func breadthFirst(f func(string) []string, worklist []string) { //cria uma funçao f do tipo funçao com entrada e saida do tipo string
-	// e grava o valor do "so.Args[1:]" na funçao worklist do tipo string
+func breadthFirst(f func(string) []string, worklist []string) []string { //cria uma funçao f do tipo funçao com entrada e saida do tipo string e grava o valor do "urlsLidas" na funçao worklist do tipo string
 	seen := make(map[string]bool) //cria um map que armazena um conjunto de chave/valor do tipo string boleano
-	for len(worklist) > 0 {
+	for len(worklist) > 0 {       //cria um loop que exibe as urls ja acessadas
 		items := worklist            //copia as urls do worklist para o itens
 		worklist = nil               // apaga o valor gravado do worklist
 		for _, item := range items { // cria um par de valores
@@ -127,6 +59,7 @@ func breadthFirst(f func(string) []string, worklist []string) { //cria uma funç
 		}
 
 	}
+	return worklist //retorna o valor armazenado na variavel worklist
 }
 
 func crawl(url string) []string { // cria uma entrada(url) e uma saida do tipo string
@@ -135,7 +68,7 @@ func crawl(url string) []string { // cria uma entrada(url) e uma saida do tipo s
 	if err != nil {
 		log.Print(err)
 	}
-	return list
+	return list //retorna uma lista
 }
 
 //trata o percurso
@@ -192,8 +125,3 @@ func Extract(url string) ([]string, error) {
 	forEachNode(doc, visitNode, nil)
 	return links, nil
 }
-# Web-Craw
-# Web-Craw
-# Web-Craw
-# Web-Craw
-# Web-Craw
