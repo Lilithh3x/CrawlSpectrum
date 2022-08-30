@@ -12,14 +12,31 @@ import (
 	"golang.org/x/net/html"
 )
 
+var w = flag.String("w", "", "Set Wordlist")
+
 func main() {
+	println("")
+	println("")
+	println("")
+	println("")
+	println(" 		    •• Web-CrawlF •• \n")
+	println(" 	   	••• Srt.Lilith_64 ••• \n")
+	println(" 	•••• https://github.com/SrtLilith64 ••••\n")
+	println("")
+	println("	 		( ⌐■  __ ■ ) ")
+	println("								  ")
+	println("")
+	println("")
+	println("")
+
 	u := flag.String("u", "", "URL de entrada")           //cria uma variavel do tipo string, que define a url de input do programa, e inclue uma descriçao ao comando "u"
 	d := flag.Int("d", 1, "Nível de profundidade BFS")    //cria uma variavel do tipo inteiro, que define o nivel de profundidade do BFS, e inclue uma descrição ao comando "d"
 	o := flag.String("o", "", "Cria um arquivo de saída") //cria uma variavel do tipo string que armazena o nome de um arquivo que vai salvar todos os resultados finais que irão ser gerados no fim da execucao do programa
-	flag.Parse()                                          //processa o input do usuario
-	var urlsLidas, urlsParaLer []string                   //cria uma variavel do tipo string para armazenar e separar as urls que ja foram lidas e as que faltam ainda ler
-	urlsParaLer = append(urlsParaLer, *u)                 //le a url de input armazenada no valor u
-	for i := 0; i < *d; i++ {                             //cria um loop de repetiçao que procura e armazena as urls encontradas na pagina
+
+	flag.Parse()                          //processa o input do usuario
+	var urlsLidas, urlsParaLer []string   //cria uma variavel do tipo string para armazenar e separar as urls que ja foram lidas e as que faltam ainda ler
+	urlsParaLer = append(urlsParaLer, *u) //le a url de input armazenada no valor u
+	for i := 0; i < *d; i++ {             //cria um loop de repetiçao que procura e armazena as urls encontradas na pagina
 		urlsLidas = append(urlsLidas, urlsParaLer...)  //subistitui as urls que ja foram lidas para as novas que ainda faltam ler
 		urlsParaLer = breadthFirst(crawl, urlsParaLer) //armazena as urls que ja foram lidas das novas que tem para ler
 	}
@@ -27,7 +44,35 @@ func main() {
 	for _, url := range urlsLidas { //cria um loop que salva todas as urls encontradas
 		fmt.Println(url) //printa as urls encontradas
 	}
+
 	writeOutput(urlsLidas, *o) //chama a funcao writeOutput para criar um arquivo de saida
+}
+
+func fuzzScan(worklist string) {
+	readFile, err := os.Open(*w)
+	if err != nil {
+		log.Fatalf("Falha ao ler o arquivo : %s", err)
+	}
+
+	fileScan := bufio.NewScanner(readFile)
+	fileScan.Split(bufio.ScanLines)
+	var fileTextLines []string
+
+	for fileScan.Scan() {
+		fileTextLines = append(fileTextLines, fileScan.Text())
+	}
+
+	for _, eachline := range fileTextLines {
+		http.Get(worklist + "/" + eachline)
+		if err != nil {
+			fmt.Println(" A URL Deve ser com 'HTTP://' ou 'HTTPS://'")
+			log.Fatalln(err)
+		}
+
+	}
+
+	readFile.Close()
+
 }
 
 //funçao que cria o arquivo de saida com o resultado da variavel urlsLidas
@@ -91,6 +136,7 @@ Faz uma requisição HTTP GET ao o URL especificado fazendo a analise do HTML
 e devolve os links encontrados no HTML do site especificado
 */
 func Extract(url string) ([]string, error) {
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
